@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IQM Signage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@200;300;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0d10;
+    --paper: #f3f4f4;
+    --glow: #5fe0d8;       /* the teal edge-light on the Radiance cabinets */
+    --margin: 4.2vw;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; cursor: none;
+    background: var(--ink);
+    font-family: "Sora", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- slides ---------- */
+  .slide {
+    position: fixed; inset: 0; overflow: hidden;
+    opacity: 0; transition: opacity 1.6s ease;
+    background: var(--ink) center / cover no-repeat;
+  }
+  .slide.light { background-color: var(--paper); }
+  .slide.on { opacity: 1; z-index: 1; }
+  .slide.slow { transition-duration: 2.8s; }   /* softer when switching between light and dark */
+
+  .slide .pic {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain;
+    transform: scale(1);
+    will-change: transform;
+  }
+  .slide.cover .pic { object-fit: cover; }
+  .slide.on .pic { animation: drift var(--dur) linear forwards; }
+  .slide:nth-child(even).on .pic { animation-name: drift-b; }
+  @keyframes drift   { from { transform: scale(1.0) } to { transform: scale(1.06) translate(-0.6%, -0.4%) } }
+  @keyframes drift-b { from { transform: scale(1.06) translate(0.6%, 0.3%) } to { transform: scale(1.0) } }
+
+  /* soft shade at the bottom of dark slides so the caption always reads */
+  .slide.dark::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 34%;
+    background: linear-gradient(to top, rgba(5,7,9,.72), rgba(5,7,9,0));
+    pointer-events: none;
+  }
+
+  .slide.light::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 30%;
+    background: linear-gradient(to top, rgba(243,244,244,.9), rgba(243,244,244,0));
+    pointer-events: none;
+  }
+
+  /* ---------- caption ---------- */
+  .caption {
+    position: absolute; z-index: 2;
+    left: var(--margin); bottom: calc(var(--margin) * 0.9);
+    color: #fff;
+    opacity: 0; transform: translateY(0.6vw);
+    transition: opacity 1s ease .9s, transform 1s ease .9s;
+  }
+  .slide.light .caption { color: var(--ink); }
+  .slide.on .caption { opacity: 1; transform: none; }
+  .caption::before {
+    content: ""; display: block;
+    width: 3.2vw; height: max(2px, .16vw);
+    background: var(--glow); margin-bottom: 1.1vw;
+    box-shadow: 0 0 1vw var(--glow);
+  }
+  .caption .title { font-weight: 500; font-size: 1.9vw; letter-spacing: .01em; line-height: 1.15; }
+  .caption .sub   { font-weight: 300; font-size: 1.25vw; opacity: .78; margin-top: .35vw; }
+
+  /* ---------- clock (sits above every slide) ---------- */
+  .clock {
+    position: fixed; z-index: 5;
+    right: var(--margin); bottom: calc(var(--margin) * 0.9);
+    text-align: right; color: #fff;
+    transition: color 1.6s ease, opacity 1s ease;
+  }
+  body.on-light .clock { color: var(--ink); }
+  body.on-welcome .clock { opacity: 0; }
+  .clock .t { font-weight: 300; font-size: 2.6vw; line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock .d { font-weight: 300; font-size: 1vw; opacity: .7; margin-top: .5vw; }
+
+  /* ---------- welcome card ---------- */
+  .welcome {
+    background:
+      radial-gradient(ellipse 60% 70% at 72% 55%, rgba(95,224,216,.10), transparent 70%),
+      var(--ink);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 var(--margin) 0 calc(var(--margin) * 1.6);
+    color: #fff;
+  }
+  .welcome .pic {
+    left: auto; right: 0; width: 68%; object-fit: cover; object-position: 40% 50%;
+    opacity: .85;
+    -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 30%, #000 65%);
+            mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 30%, #000 65%);
+  }
+  .welcome > div { position: relative; z-index: 1; }
+  .welcome .big-time {
+    font-weight: 200; font-size: 15vw; line-height: .9; letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .welcome .date { font-weight: 300; font-size: 1.8vw; opacity: .7; margin-top: 2vw; }
+  .welcome .hello {
+    font-weight: 500; font-size: 2.2vw; margin-top: 4.5vw;
+    display: flex; align-items: center; gap: 1.4vw;
+  }
+  .welcome .hello::before {
+    content: ""; width: 3.2vw; height: max(2px, .16vw);
+    background: var(--glow); box-shadow: 0 0 1vw var(--glow);
+  }
+  .welcome .big-time, .welcome .date, .welcome .hello {
+    opacity: 0; transform: translateY(1vw);
+    transition: opacity 1.2s ease, transform 1.2s ease;
+  }
+  .welcome.on .big-time { opacity: 1; transform: none; transition-delay: .5s; }
+  .welcome.on .date     { opacity: 1; transform: none; transition-delay: .8s; }
+  .welcome.on .hello    { opacity: 1; transform: none; transition-delay: 1.2s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide.on .pic { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="clock"><div class="t"></div><div class="d"></div></div>
+
+<script>
+/* =====================================================================
+   SETTINGS — edit these
+   ===================================================================== */
+const SECONDS_PER_SLIDE   = 9;    // photos and renders
+const SECONDS_WELCOME     = 12;   // the clock / welcome card
+const WELCOME_TEXT        = "IQM Internal Lounge";
+const LOCALE              = "en-GB";
+
+/* Each entry is one slide, in play order.
+   tone:  "dark" or "light"  (sets text colour and the softer crossfade)
+   fit:   "cover" fills the screen edge to edge (16:9 renders);
+          leave it out for photos so nothing is cropped
+   title / sub: optional caption, bottom left                             */
+const SLIDES = [
+  { welcome: true },
+
+  // --- dark run: people + the system in the dark lab ---
+  { src: "radiance-dark_environment_02.jpg", tone: "dark", fit: "cover", title: "IQM Radiance", sub: "In the data centre" },
+  { src: "radiance-dark_environment_04.jpg", tone: "dark", fit: "cover", title: "IQM Radiance" },
+  { src: "radiance-dark_front_open_dof.jpg", tone: "dark", fit: "cover", title: "IQM Radiance", sub: "Open for service" },
+
+  // --- light run: the product renders ---
+  { src: "radiance-render_basic_front_view.jpg",  tone: "light", fit: "cover", title: "IQM Radiance" },
+  { src: "radiance-core_closeup.jpg",             tone: "light", fit: "cover", title: "IQM Radiance", sub: "Up close" },
+  { src: "radiance-l_layout_half-front.jpg",      tone: "light", fit: "cover", title: "IQM Radiance", sub: "L-shaped layout" },
+  { src: "radiance-box_layout_front.jpg",         tone: "light", fit: "cover", title: "IQM Radiance", sub: "Compact layout" },
+  { src: "radiance-render_array_front_view.jpg",  tone: "light", fit: "cover", title: "IQM Radiance", sub: "In the data centre" },
+  { src: "radiance-array_room_dof.jpg",           tone: "light", fit: "cover", title: "IQM Radiance", sub: "Three systems, one room" },
+  { src: "radiance-array_room_people_dof.jpg",    tone: "light", fit: "cover", title: "IQM Radiance" },
+  { src: "radiance-box_layout_half-top.jpg",      tone: "light", fit: "cover", title: "IQM Radiance", sub: "Compact layout" },
+  { src: "radiance-l_layout_half-top.jpg",        tone: "light", fit: "cover", title: "IQM Radiance", sub: "L-shaped layout" },
+
+  { welcome: true },
+
+  // --- second dark run ---
+  { src: "8.jpg",  tone: "dark" },
+  { src: "radiance-dark_environment_01.jpg", tone: "dark", fit: "cover", title: "IQM Radiance", sub: "In the data centre" },
+  { src: "radiance-dark_environment_03.jpg", tone: "dark", fit: "cover", title: "IQM Radiance" },
+];
+/* ===================================================================== */
+
+const fmtTime = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit" });
+const fmtDate = new Intl.DateTimeFormat(LOCALE, { weekday: "long", day: "numeric", month: "long" });
+const timeEls = [], dateEls = [];
+
+const els = SLIDES.map(s => {
+  const el = document.createElement("div");
+  const dur = s.welcome ? SECONDS_WELCOME : SECONDS_PER_SLIDE;
+  el.style.setProperty("--dur", (dur + 2) + "s");
+
+  if (s.welcome) {
+    el.className = "slide welcome dark";
+    el.innerHTML = '<img class="pic" alt="" src="img/radiance-dark_environment_04.jpg">' +
+                   '<div class="big-time"></div><div class="date"></div><div class="hello"></div>';
+    el.querySelector(".hello").textContent = WELCOME_TEXT;
+    timeEls.push(el.querySelector(".big-time"));
+    dateEls.push(el.querySelector(".date"));
+  } else {
+    el.className = "slide " + (s.tone || "dark") + (s.fit === "cover" ? " cover" : "");
+    if (s.fit !== "cover") el.style.backgroundImage = "url('img/bg-" + s.src + "')";
+    const img = document.createElement("img");
+    img.className = "pic"; img.src = "img/" + s.src; img.alt = "";
+    el.appendChild(img);
+    if (s.title || s.sub) {
+      const c = document.createElement("div");
+      c.className = "caption";
+      if (s.title) { const t = document.createElement("div"); t.className = "title"; t.textContent = s.title; c.appendChild(t); }
+      if (s.sub)   { const u = document.createElement("div"); u.className = "sub";   u.textContent = s.sub;   c.appendChild(u); }
+      el.appendChild(c);
+    }
+  }
+  document.body.appendChild(el);
+  return { el, dur, tone: s.welcome ? "dark" : (s.tone || "dark"), welcome: !!s.welcome };
+});
+
+// clock
+const cT = document.querySelector(".clock .t"), cD = document.querySelector(".clock .d");
+function tick() {
+  const now = new Date();
+  const t = fmtTime.format(now), d = fmtDate.format(now);
+  cT.textContent = t; cD.textContent = d;
+  timeEls.forEach(e => e.textContent = t);
+  dateEls.forEach(e => e.textContent = d);
+}
+tick(); setInterval(tick, 1000);
+
+// playback
+let i = -1;
+function show(n) {
+  const prev = els[i], next = els[n];
+  const switching = prev && prev.tone !== next.tone;
+  next.el.classList.toggle("slow", !!switching);
+  if (prev) { prev.el.classList.toggle("slow", !!switching); prev.el.classList.remove("on"); }
+  // restart the drift animation each time a slide comes back round
+  const pic = next.el.querySelector(".pic");
+  if (pic) { pic.style.animation = "none"; void pic.offsetWidth; pic.style.animation = ""; }
+  next.el.classList.add("on");
+  document.body.classList.toggle("on-light", next.tone === "light");
+  document.body.classList.toggle("on-welcome", next.welcome);
+  i = n;
+  setTimeout(() => show((i + 1) % els.length), next.dur * 1000);
+}
+show(0);
+
+// reload once a day to pick up new content
+setTimeout(() => location.reload(), 24 * 60 * 60 * 1000);
+</script>
+</body>
+</html>
